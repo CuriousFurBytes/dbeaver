@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DBeaver – SQL Editor Panel (Dark)</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #1C1E22;
+    --panel:    #15171A;
+    --surface:  #242629;
+    --border:   #333640;
+    --text:     #E2E4EA;
+    --text2:    #8C91A0;
+    --text3:    #525768;
+    --accent:   #4A9EF5;
+    --accent-bg:#1E3A5C;
+    --success:  #3DBE72;
+    --warn:     #F59E0B;
+    --error:    #F05050;
+    --font:     system-ui, 'Segoe UI', sans-serif;
+    --mono:     'JetBrains Mono', 'Consolas', monospace;
+  }
+
+  body {
+    background: var(--panel);
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--text);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Editor header: tab bar + toolbar ── */
+  .editor-header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .tab-bar {
+    display: flex;
+    align-items: flex-end;
+    padding: 0 4px;
+    gap: 2px;
+    height: 34px;
+    overflow: hidden;
+  }
+  .tab {
+    height: 30px; padding: 0 14px; display: flex; align-items: center; gap: 8px;
+    font-size: 12px; cursor: pointer; background: var(--surface); border: 1px solid var(--border);
+    border-bottom: none; border-radius: 3px 3px 0 0; color: var(--text2); white-space: nowrap;
+  }
+  .tab.active {
+    color: var(--text); border-bottom: 2px solid var(--accent); margin-bottom: -1px; font-weight: 500;
+    background: var(--bg);
+  }
+  .tab .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); flex-shrink: 0; }
+  .tab .close { color: var(--text3); font-size: 10px; margin-left: 4px; }
+
+  .editor-toolbar {
+    display: flex; align-items: center; height: 28px;
+    padding: 0 8px; gap: 2px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .tb-btn {
+    height: 22px; padding: 0 8px; display: flex; align-items: center; gap: 4px;
+    border-radius: 2px; cursor: pointer; color: var(--text2); border: none; background: none;
+    font-size: 11px; font-family: var(--font);
+  }
+  .tb-btn:hover { background: var(--panel); color: var(--text); }
+  .tb-btn.primary { color: var(--accent); }
+  .tb-btn svg { flex-shrink: 0; }
+  .tb-sep { width: 1px; height: 14px; background: var(--border); margin: 0 3px; }
+  .tb-right { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+  .schema-pill {
+    display: flex; align-items: center; gap: 5px;
+    height: 20px; padding: 0 8px; border-radius: 2px;
+    border: 1px solid var(--border); font-size: 11px; cursor: pointer;
+    background: var(--panel); color: var(--text2);
+  }
+  .schema-pill:hover { border-color: var(--accent); color: var(--text); }
+
+  /* ── Code area ── */
+  .editor-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  /* Gutter */
+  .gutter {
+    min-width: 52px; width: 52px;
+    padding: 14px 10px 14px 0;
+    text-align: right;
+    color: var(--text3);
+    font-family: var(--mono); font-size: 11.5px; line-height: 1.65;
+    user-select: none;
+    border-right: 1px solid var(--border);
+    background: var(--panel);
+  }
+
+  /* Code */
+  .code-area {
+    flex: 1;
+    overflow: auto;
+    padding: 14px 0;
+  }
+  .line {
+    display: flex; align-items: stretch;
+    min-height: calc(11.5px * 1.65);
+    font-family: var(--mono); font-size: 11.5px; line-height: 1.65;
+    white-space: pre;
+  }
+  .line.active-line { background: rgba(74,158,245,0.07); }
+  .line.error-line  { background: rgba(240,80,80,0.08); }
+  .line.warn-line   { background: rgba(245,158,11,0.07); }
+  .line-content { padding: 0 20px; }
+
+  /* Indicator strip (left of gutter) */
+  .indicators {
+    width: 16px; min-width: 16px;
+    padding: 14px 0;
+    background: var(--panel);
+  }
+  .ind-row {
+    height: calc(11.5px * 1.65);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ind-error   { color: var(--error); font-size: 10px; }
+  .ind-warn    { color: var(--warn); font-size: 10px; }
+  .ind-bp      { width: 8px; height: 8px; border-radius: 50%; background: var(--error); }
+  .ind-current { color: var(--accent); font-size: 9px; }
+
+  /* Syntax tokens */
+  .kw   { color: #6BAEE8; font-weight: 500; }
+  .str  { color: #7EC8A0; }
+  .num  { color: #F59E0B; }
+  .cmt  { color: #525768; font-style: italic; }
+  .fn   { color: #C79BD8; }
+  .tbl  { color: #E2E4EA; font-weight: 500; }
+  .col  { color: #6BC5C5; }
+  .type { color: #C49A44; }
+  .op   { color: #8C91A0; }
+  .par  { color: #F59E0B; }
+  .sel  { background: var(--accent-bg); border-radius: 1px; }
+  .err-token { border-bottom: 2px solid var(--error); }
+
+  /* Autocomplete popup */
+  .autocomplete {
+    position: absolute;
+    top: calc(14px + 7 * 11.5px * 1.65);
+    left: calc(52px + 16px + 20px + 14ch);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    width: 260px;
+    overflow: hidden;
+    font-size: 12px;
+    z-index: 10;
+  }
+  .ac-header {
+    padding: 4px 10px;
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text3); background: var(--panel); border-bottom: 1px solid var(--border);
+  }
+  .ac-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 10px; cursor: pointer; font-family: var(--mono); font-size: 11.5px;
+  }
+  .ac-item:hover, .ac-item.selected { background: var(--accent-bg); }
+  .ac-icon { width: 16px; font-size: 12px; flex-shrink: 0; color: var(--text3); text-align: center; }
+  .ac-name { flex: 1; color: var(--text); }
+  .ac-type { font-size: 10px; color: var(--text3); font-family: var(--font); }
+
+  /* Inline error tooltip */
+  .inline-tooltip {
+    position: absolute;
+    top: calc(14px + 2 * 11.5px * 1.65 + 4px);
+    left: calc(52px + 16px + 20px + 28ch);
+    background: #3B1212;
+    border: 1px solid var(--error);
+    border-radius: 3px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-family: var(--font);
+    color: #FCA5A5;
+    max-width: 240px;
+    z-index: 9;
+  }
+
+  /* Right sidebar (minimap-like column info) */
+  .sidebar-right {
+    width: 180px; min-width: 180px;
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    background: var(--panel); overflow: hidden;
+  }
+  .sidebar-section {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-section h4 {
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text3); margin-bottom: 6px;
+  }
+  .sb-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 0; font-size: 11px; color: var(--text2);
+    font-family: var(--mono);
+  }
+  .sb-item .sb-ico { font-size: 12px; color: var(--text3); }
+  .sb-item strong { color: var(--text); }
+  .sb-type { font-size: 10px; color: var(--text3); margin-left: auto; font-family: var(--font); }
+
+  /* ── Status bar ── */
+  .status-bar {
+    height: 20px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 12px; gap: 16px;
+    font-size: 11px; color: var(--text2); flex-shrink: 0;
+  }
+  .status-seg { display: flex; align-items: center; gap: 4px; }
+  .status-sep { width: 1px; height: 12px; background: var(--border); }
+  .status-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .status-err { color: var(--error); display: flex; align-items: center; gap: 4px; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- Editor header -->
+<div class="editor-header">
+  <div class="tab-bar">
+    <div class="tab">
+      <span style="font-size:13px">🗒</span> analytics_q1.sql
+      <span class="close">✕</span>
+    </div>
+    <div class="tab active">
+      <span style="font-size:13px">🗒</span> schema_migration.sql
+      <span class="dot"></span>
+      <span class="close">✕</span>
+    </div>
+    <div class="tab">
+      <span style="font-size:13px">🗒</span> reports.sql
+      <span class="close">✕</span>
+    </div>
+    <div class="tab" style="padding:0 8px; color:var(--text3)">＋</div>
+  </div>
+  <div class="editor-toolbar">
+    <button class="tb-btn primary" title="Execute (F5)">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 2l7 4-7 4V2z" fill="currentColor"/></svg>
+      Run
+    </button>
+    <button class="tb-btn" title="Execute selection">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 2l7 4-7 4V2z" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+      Selection
+    </button>
+    <button class="tb-btn" title="Explain plan">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.2"/><path d="M6 4v3l2 1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      Explain
+    </button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" title="Format SQL">⌦ Format</button>
+    <button class="tb-btn" title="Find / Replace">⌕ Find</button>
+    <div class="tb-right">
+      <div class="schema-pill">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><ellipse cx="5.5" cy="3" rx="4" ry="1.8" stroke="currentColor" stroke-width="1"/><path d="M1.5 3v5c0 1 1.8 1.8 4 1.8s4-.8 4-1.8V3" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+        postgres-dev
+        <span style="font-size:9px; color:var(--text3)">▾</span>
+      </div>
+      <div class="schema-pill">
+        <span>📁</span> public
+        <span style="font-size:9px; color:var(--text3)">▾</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Editor body (positioned for absolute overlays) -->
+<div style="flex:1; display:flex; overflow:hidden; position:relative">
+
+  <div class="editor-body" style="flex:1; overflow:hidden">
+
+    <!-- Indicator strip -->
+    <div class="indicators">
+      <div class="ind-row"></div>
+      <div class="ind-row"></div>
+      <div class="ind-row"><span class="ind-error">●</span></div>
+      <div class="ind-row"></div>
+      <div class="ind-row"></div>
+      <div class="ind-row"></div>
+      <div class="ind-row"></div>
+      <div class="ind-row"><span class="ind-current">▶</span></div>
+      <div class="ind-row"></div>
+      <div class="ind-row"></div>
+      <div class="ind-row"></div>
+      <div class="ind-row"></div>
+      <div class="ind-row"></div>
+      <div class="ind-row"></div>
+      <div class="ind-row"></div>
+      <div class="ind-row"></div>
+      <div class="ind-row"></div>
+      <div class="ind-row"></div>
+    </div>
+
+    <!-- Line numbers -->
+    <div class="gutter">
+      <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div>
+      <div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+      <div>11</div><div>12</div><div>13</div><div>14</div><div>15</div>
+      <div>16</div><div>17</div><div>18</div>
+    </div>
+
+    <!-- Code -->
+    <div class="code-area">
+      <div class="line"><div class="line-content"><span class="cmt">-- Schema migration v2.4: add billing columns to users</span></div></div>
+      <div class="line"><div class="line-content"></div></div>
+      <div class="line error-line"><div class="line-content"><span class="kw">ALTER TABLE</span> <span class="tbl err-token">usr</span></div></div>
+      <div class="line"><div class="line-content">    <span class="kw">ADD COLUMN</span> <span class="col">billing_email</span> <span class="type">VARCHAR</span><span class="par">(</span><span class="num">255</span><span class="par">)</span>,</div></div>
+      <div class="line"><div class="line-content">    <span class="kw">ADD COLUMN</span> <span class="col">payment_provider</span> <span class="type">VARCHAR</span><span class="par">(</span><span class="num">64</span><span class="par">)</span> <span class="kw">DEFAULT</span> <span class="str">'stripe'</span>,</div></div>
+      <div class="line"><div class="line-content">    <span class="kw">ADD COLUMN</span> <span class="col">stripe_customer_id</span> <span class="type">TEXT</span>,</div></div>
+      <div class="line"><div class="line-content">    <span class="kw">ADD COLUMN</span> <span class="col">subscription_tier</span> <span class="type">SMALLINT</span> <span class="kw">NOT NULL DEFAULT</span> <span class="num">0</span>;</div></div>
+      <div class="line"><div class="line-content"></div></div>
+      <div class="line active-line"><div class="line-content"><span class="cmt">-- Add index for subscription queries</span></div></div>
+      <div class="line"><div class="line-content"><span class="kw">CREATE INDEX</span> <span class="col">idx_users_subscription</span></div></div>
+      <div class="line"><div class="line-content">    <span class="kw">ON</span> <span class="tbl">users</span> <span class="par">(</span><span class="col">subscription_tier</span>, <span class="col">created_at</span><span class="par">)</span></div></div>
+      <div class="line"><div class="line-content">    <span class="kw">WHERE</span> <span class="col">subscription_tier</span> <span class="op">&gt;</span> <span class="num">0</span>;</div></div>
+      <div class="line"><div class="line-content"></div></div>
+      <div class="line"><div class="line-content"><span class="cmt">-- Backfill existing rows</span></div></div>
+      <div class="line"><div class="line-content"><span class="kw">UPDATE</span> <span class="tbl">users</span></div></div>
+      <div class="line"><div class="line-content">    <span class="kw">SET</span> <span class="col">billing_email</span> <span class="op">=</span> <span class="col">email</span>,</div></div>
+      <div class="line"><div class="line-content">        <span class="col">payment_provider</span> <span class="op">=</span> <span class="str">'stripe'</span></div></div>
+      <div class="line"><div class="line-content">    <span class="kw">WHERE</span> <span class="col">billing_email</span> <span class="kw">IS NULL</span>;</div></div>
+    </div>
+
+  </div><!-- /editor-body -->
+
+  <!-- Error tooltip (positioned absolute over line 3) -->
+  <div class="inline-tooltip">
+    ✕ Table "usr" does not exist in schema "public".<br>
+    Did you mean "users"?
+  </div>
+
+  <!-- Autocomplete popup (positioned over line 9) -->
+  <div class="autocomplete">
+    <div class="ac-header">Columns — users</div>
+    <div class="ac-item selected">
+      <span class="ac-icon">≡</span>
+      <span class="ac-name">subscription_tier</span>
+      <span class="ac-type">SMALLINT</span>
+    </div>
+    <div class="ac-item">
+      <span class="ac-icon">≡</span>
+      <span class="ac-name">stripe_customer_id</span>
+      <span class="ac-type">TEXT</span>
+    </div>
+    <div class="ac-item">
+      <span class="ac-icon">≡</span>
+      <span class="ac-name">billing_email</span>
+      <span class="ac-type">VARCHAR(255)</span>
+    </div>
+    <div class="ac-item">
+      <span class="ac-icon">≡</span>
+      <span class="ac-name">payment_provider</span>
+      <span class="ac-type">VARCHAR(64)</span>
+    </div>
+    <div class="ac-item">
+      <span class="ac-icon">≡</span>
+      <span class="ac-name">created_at</span>
+      <span class="ac-type">TIMESTAMPTZ</span>
+    </div>
+  </div>
+
+  <!-- Right context sidebar -->
+  <div class="sidebar-right">
+    <div class="sidebar-section">
+      <h4>Current object</h4>
+      <div class="sb-item">
+        <span class="sb-ico">▦</span>
+        <strong>users</strong>
+      </div>
+      <div class="sb-item" style="padding-left:16px; font-size:10px; color:var(--text3)">postgres-dev › public</div>
+    </div>
+    <div class="sidebar-section" style="flex:1; overflow-y:auto">
+      <h4>Columns</h4>
+      <div class="sb-item"><span class="sb-ico">≡</span> id <span class="sb-type">INT</span></div>
+      <div class="sb-item"><span class="sb-ico">≡</span> name <span class="sb-type">TEXT</span></div>
+      <div class="sb-item"><span class="sb-ico">≡</span> email <span class="sb-type">TEXT</span></div>
+      <div class="sb-item"><span class="sb-ico">≡</span> status <span class="sb-type">TEXT</span></div>
+      <div class="sb-item" style="color:var(--accent)"><span class="sb-ico">≡</span> billing_email <span class="sb-type">VARCHAR</span></div>
+      <div class="sb-item" style="color:var(--accent)"><span class="sb-ico">≡</span> subscription_tier <span class="sb-type">INT2</span></div>
+      <div class="sb-item" style="color:var(--accent)"><span class="sb-ico">≡</span> stripe_customer_id <span class="sb-type">TEXT</span></div>
+      <div class="sb-item"><span class="sb-ico">≡</span> created_at <span class="sb-type">TSTZ</span></div>
+    </div>
+    <div class="sidebar-section">
+      <h4>Issues</h4>
+      <div class="sb-item" style="color:var(--error)">
+        <span>✕</span> 1 error (line 3)
+      </div>
+    </div>
+  </div>
+
+</div><!-- /flex wrapper -->
+
+<!-- Status bar -->
+<div class="status-bar">
+  <div class="status-seg">
+    <div style="width:7px;height:7px;border-radius:50%;background:var(--success)"></div>
+    postgres-dev
+  </div>
+  <div class="status-sep"></div>
+  <div class="status-seg">public</div>
+  <div class="status-sep"></div>
+  <div class="status-err">✕ 1 error</div>
+  <div class="status-right">
+    <span style="font-family:var(--mono)">Ln 9, Col 3</span>
+    <div class="status-sep"></div>
+    <span>UTF-8</span>
+    <div class="status-sep"></div>
+    <span>SQL</span>
+  </div>
+</div>
+
+</body>
+</html>
