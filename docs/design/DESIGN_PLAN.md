@@ -1,241 +1,280 @@
-# DBeaver Modern UI Redesign — Design Plan
+# DBeaver Modern UI Redesign — Design Plan (v2)
 
-## Overview
+> **Inspiration:** Zed Editor · VS Code · Slack · Linear
+> **Design philosophy:** High-density but airy. Meaningful colour only. Every pixel earns its place.
 
-This document describes a proposed modern UI refresh for DBeaver. The goal is a clean,
-minimalist aesthetic that is consistent across platforms, comfortable for extended use, and
-performant (no GPU-heavy effects such as transparency, blur, or "glass"). All changes are
-confined to styling, theming, and icon assets — no architectural or feature changes.
+---
+
+## What changed in v2
+
+The v1 mockups were still "old looking" because they used:
+- Emoji characters as UI icons (`🗄 📁 ▦ 👁`)
+- Box-drawing expand chevrons (`▾ ▸`)
+- Traditional top-only toolbar without an activity bar
+- Gradients and outer tab borders
+
+v2 addresses all of this with a fully modern design system.
 
 ---
 
 ## Design Principles
 
-| Principle        | Description |
-|------------------|-------------|
-| **Flat & clean** | No shadows, no gradients, no blur. Subtle 1 px borders only where structure is needed. |
-| **Legible**      | High-contrast text on every surface. Minimum 4.5:1 contrast ratio. |
-| **Consistent spacing** | 4 px grid — padding multiples of 4. Default row height 28 px, compact 24 px. |
-| **Purposeful colour** | One brand accent (`#2A7FE8`). Semantic colours for status only (green/amber/red). |
-| **System fonts** | `Segoe UI 9` on Windows, `SF Pro Text 13` on macOS, `Inter 10` on Linux. Monospace: `JetBrains Mono`. |
-| **Accessible**   | Every interactive element has a keyboard accessible focus ring. |
+| Principle | Implementation |
+|-----------|---------------|
+| **Activity bar** | 48 px icon-only left rail (VS Code convention); separates navigation from editing |
+| **SVG-only icons** | All icons are inline `currentColor` SVGs — no emoji, no PNG sprites |
+| **Flat surfaces** | No shadows on chrome elements; one subtle `box-shadow` on modal dialogs only |
+| **Accent underline tabs** | Tabs sit flat; active tab = 1 px accent top border (VS Code style) |
+| **Breadcrumb navigation** | Path shown below tabs: Connection › Schema › Table › file.sql |
+| **Semantic colours** | Accent for actions; success/warn/error for status; never decorative |
+| **Dense but breathable** | 22 px tree rows, 26 px table rows, 35 px tabs; 4 px grid spacing |
 
 ---
 
-## Colour Palette
+## Colour Tokens
 
-### Light Theme
+### Light Theme (VS Code Light+ inspired)
 
-| Role | Hex | RGB |
-|------|-----|-----|
-| Canvas / page background | `#F5F6F7` | 245, 246, 247 |
-| Panel / sidebar background | `#ECEDF0` | 236, 237, 240 |
-| Surface (cards, tabs) | `#FFFFFF` | 255, 255, 255 |
-| Border | `#D1D3D8` | 209, 211, 216 |
-| Primary text | `#1A1C20` | 26, 28, 32 |
-| Secondary text | `#5A5E6B` | 90, 94, 107 |
-| Placeholder / disabled | `#9EA4B0` | 158, 164, 176 |
-| Accent (links, active tabs, focus) | `#2A7FE8` | 42, 127, 232 |
-| Accent hover | `#1A6FD4` | 26, 111, 212 |
-| Selection highlight | `#D6E8FB` | 214, 232, 251 |
-| Success | `#2D9E5F` | 45, 158, 95 |
-| Warning | `#D97706` | 217, 119, 6 |
-| Error / Danger | `#D93B3B` | 217, 59, 59 |
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `--editor-bg`    | `#ffffff` | Editor canvas, active tab |
+| `--sidebar-bg`   | `#f3f3f3` | Tree view, sidebar |
+| `--actbar-bg`    | `#2c2c2c` | Activity bar (intentionally dark) |
+| `--tab-inactive` | `#ececec` | Inactive tabs |
+| `--toolbar-bg`   | `#f8f8f8` | Editor toolbar |
+| `--panel-bg`     | `#f3f3f3` | Result tab bar, table headers |
+| `--statusbar-bg` | `#005fb8` | Status bar (solid accent) |
+| `--border`       | `#e5e5e5` | Subtle dividers |
+| `--border-mid`   | `#d0d0d0` | Input borders, active separators |
+| `--text`         | `#1e1e1e` | Primary text |
+| `--text2`        | `#616161` | Secondary / labels |
+| `--text3`        | `#a0a0a0` | Placeholders, line numbers |
+| `--accent`       | `#005fb8` | Links, active states, run button |
+| `--accent-bg`    | `#e8f2fd` | Selection highlight |
+| `--success`      | `#14854f` | Connected badge, commit |
+| `--warn`         | `#b46200` | Warning states |
+| `--error`        | `#bf1717` | Error states |
 
-### Dark Theme
+### Dark Theme (Zed / VS Code Dark+ inspired)
 
-| Role | Hex | RGB |
-|------|-----|-----|
-| Canvas / page background | `#1C1E22` | 28, 30, 34 |
-| Panel / sidebar background | `#15171A` | 21, 23, 26 |
-| Surface (cards, tabs) | `#242629` | 36, 38, 41 |
-| Border | `#333640` | 51, 54, 64 |
-| Primary text | `#E2E4EA` | 226, 228, 234 |
-| Secondary text | `#8C91A0` | 140, 145, 160 |
-| Placeholder / disabled | `#525768` | 82, 87, 104 |
-| Accent | `#4A9EF5` | 74, 158, 245 |
-| Accent hover | `#6BB2F7` | 107, 178, 247 |
-| Selection highlight | `#1E3A5C` | 30, 58, 92 |
-| Success | `#3DBE72` | 61, 190, 114 |
-| Warning | `#F59E0B` | 245, 158, 11 |
-| Error / Danger | `#F05050` | 240, 80, 80 |
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `--editor-bg`    | `#111111` | Editor canvas (true dark, Zed-like) |
+| `--sidebar-bg`   | `#1a1a1a` | Sidebar |
+| `--actbar-bg`    | `#131313` | Activity bar |
+| `--tab-inactive` | `#191919` | Inactive tabs |
+| `--panel-bg`     | `#161616` | Toolbar, result bar |
+| `--statusbar-bg` | `#0e639c` | Status bar |
+| `--border`       | `#2a2a2a` | Dividers (very subtle) |
+| `--border-mid`   | `#333333` | Input borders |
+| `--text`         | `#d4d4d4` | Primary text (VS Code default) |
+| `--text2`        | `#858585` | Secondary |
+| `--text3`        | `#4a4a4a` | Gutters, disabled |
+| `--accent`       | `#4d9ef5` | Accent |
+| `--accent-bg`    | `#1a3b5e` | Selection |
+| `--success`      | `#4caf74` | Connected |
+| `--warn`         | `#e8a600` | Warning |
+| `--error`        | `#f14c4c` | Error |
 
-### Connection-type badges (both themes)
+### Connection type strips
 
-| Type | Light background | Dark background |
-|------|-----------------|-----------------|
-| Development (default) | `#EFF6FF` / border `#93C5FD` | `#1E2A3A` / border `#3B6EA8` |
-| QA / Test | `#F0FDF4` / border `#86EFAC` | `#162A1E` / border `#2F6B45` |
-| Production | `#FFF1F2` / border `#FDA4AF` | `#2A1618` / border `#7C2D2D` |
+| Type | Light border | Dark border | Placement |
+|------|-------------|-------------|-----------|
+| Dev (default) | `#5897d5` | `#4a84c4` | 3 px left border on tree row |
+| QA / Test     | `#4da86e` | `#4aaa6a` | 3 px left border on tree row |
+| Production    | `#d0544a` | `#c45050` | 3 px left border on tree row |
 
 ---
 
 ## Typography
 
-| Style | Font | Weight | Size |
-|-------|------|--------|------|
-| UI (general) | Segoe UI / SF Pro Text / Inter | Regular (400) | 9 pt Win / 13 pt Mac / 10 pt Linux |
-| UI Bold | Same | SemiBold (600) | Same |
-| Code / SQL | JetBrains Mono | Regular (400) | 10 pt |
-| Toolbar labels | Same as UI | Regular | 8 pt |
-| Section headers (properties) | Same as UI | SemiBold | 8 pt UPPERCASE |
+| Context | Font stack | Size | Weight |
+|---------|-----------|------|--------|
+| UI labels | `Inter, "Segoe UI", system-ui` | 13 px | 400 |
+| Section headers / uppercase labels | Same | 11 px | 600 + uppercase + 0.08em spacing |
+| Monospace (code, numbers, IDs) | `"JetBrains Mono", "Cascadia Code", Consolas` | 13 px | 400 |
+| Status bar / breadcrumbs | Same as UI | 11 px | 400 |
+| Tab labels | Same as UI | 12 px | 400 (active: inherit) |
 
 ---
 
-## Layout Changes
-
-### Main Window
+## Layout
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  [Logo 24px] DBeaver  ·  File  Edit  Navigate  SQL  Window  Help   │  ← Menu bar (28 px)
-├────────────┬───────────────────────────────────────────────────────┤
-│ [Toolbar – flat icon buttons, 20 px icons, 4 px gap]               │  ← Toolbar (32 px)
-├────────────┬────────────────────────────────────────────────────────┤
-│            │  [Editor tab bar — 28 px height, rounded-top 3 px]    │
-│  Database  │────────────────────────────────────────────────────────│
-│  Navigator │                                                        │
-│  (240 px)  │     Editor / Viewer area                              │
-│            │                                                        │
-│  ──────── │                                                        │
-│  Projects  ├────────────────────────────────────────────────────────┤
-│  (below,   │  [Results / Output tab bar]                           │
-│  collaps.) │  Results pane (resizable)                             │
-│            │                                                        │
-├────────────┴────────────────────────────────────────────────────────┤
-│  Status bar (20 px): connection • schema • row count • progress    │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Title bar (30 px) — traffic lights · menu items · centred title        │
+├────┬────────────────────────────────────────────────────────────────────┤
+│    │  [Tab bar — 35 px, flush flat tabs, 1 px accent top on active]     │
+│ A  │  [Editor toolbar — 30 px, run button + formatting actions]         │
+│ c  │  [Breadcrumb — 20 px, Connection › Schema › Table › file]          │
+│ t  ├────────────────────────────────────────────────────────────────────┤
+│ i  │ ┌────┐ ┌─────────────────────────────────────────────────────────┐ │
+│ v  │ │ ind│ │ gutter (52 px) │  code body                            │ │
+│ i  │ │ (18│ │  12 px font    │  13 px JetBrains Mono, 1.65 lh        │ │
+│ t  │ │ px)│ └───────────────────────────────────────────────────────┘ │ │
+│ y  ├────────────────────────────────────────────────────────────────────┤
+│ b  │  [Result tab bar — 30 px]                                         │
+│ a  │  [Data table — sticky header, 22 px rows]                         │
+│ r  │                                                                    │
+├────┴────────────────────────────────────────────────────────────────────┤
+│  Status bar (22 px, solid accent bg) — connection · schema · info       │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-Changes:
-- Sidebar width default 240 px (currently wider)
-- Toolbar height 32 px (from ~40 px)
-- Toolbars: icon-only by default, tooltip on hover
-- Tab bar: flat, no gradient, 1 px bottom border accent on active tab
-- Status bar: condensed, monospace numbers
+**Activity bar icons (top → bottom):**
+1. Database Navigator (cylinder icon)
+2. Search (magnifier)
+3. Project Explorer (folder)
+4. ER Diagrams (ER diagram icon)
+5. *(spacer)*
+6. Preferences (gear) — pinned to bottom
 
-### Database Navigator
+**Active activity bar item:** white icon + 2 px accent strip on left edge.
 
-- Tree items: 24 px row height
-- 16 px flat SVG icons (redesigned, see Icon System)
-- Connection node: coloured left-border (4 px) indicating connection type
-- Inline status dot (8 px circle): green=connected, grey=disconnected, amber=error
-- Hover: `#D6E8FB` (light) / `#1E3A5C` (dark) background
-- Selected: accent background, white text
+---
 
-### SQL Editor
+## SQL Syntax Colours
 
-- Background: white (light) / `#1C1E22` (dark)
-- Line numbers: secondary text colour
-- Gutter: 48 px wide
-- Active line highlight: 1-2% darkening, no gradient
-- Token colours follow the dark CSS already present, refined:
-  - Keywords: `#3B88D8`
-  - Strings: `#2D9E5F`
-  - Comments: `#7C8699` italic
-  - Numbers: `#D97706`
-  - Functions: `#9B59B6`
-  - Type names: `#C27C2C`
+### Light (VS Code Light+ defaults)
 
-### Results Grid
+| Token | Colour | Notes |
+|-------|--------|-------|
+| Keywords (`SELECT`, `FROM`, …) | `#0000ff` | Bold |
+| Strings | `#a31515` | |
+| Comments | `#008000` italic | |
+| Functions | `#795e26` | |
+| Types | `#267f99` | |
+| Numbers | `#098658` | |
+| Column refs | `#0070c1` | |
 
-- Header row: `#ECEDF0` (light) / `#15171A` (dark), 28 px
-- Data rows: alternating `#FFFFFF` / `#F9FAFB` (light) or `#1C1E22` / `#242629` (dark)
-- Cell selection: accent background
-- NULL values: `#9EA4B0` italic
-- Numeric: right-aligned, monospace
-- Boolean: compact pill badge (green/grey)
+### Dark (VS Code Dark+ / Zed-like)
+
+| Token | Colour | Notes |
+|-------|--------|-------|
+| Keywords | `#569cd6` | Bold |
+| Strings | `#ce9178` | |
+| Comments | `#6a9955` italic | |
+| Functions | `#dcdcaa` | |
+| Types | `#4ec9b0` | |
+| Numbers | `#b5cea8` | |
+| Column refs | `#9cdcfe` | |
+
+---
+
+## Results Grid Cell States
+
+| State | Background | Notes |
+|-------|-----------|-------|
+| Default | white / `#fafafa` (alt) | |
+| Selected row | `#e8f2fd` (light) / `#1a3b5e` (dark) | |
+| New row | `#f0fdf4` (light) | `+` in row number |
+| Modified row | `#fffbeb` (light) | italic for changed cell |
+| Deleted row | `#fff0f0` (light) | strike-through text |
+| Cell error | `#fff0f0` (light) | error-coloured text |
+| Search match | `#fef9c3` (light) | |
+| NULL | `var(--text3)` italic | never blank |
+| Boolean | Pill badge: green `true` / grey `false` | not raw text |
+| Numeric | Right-aligned, monospace, green tint | |
+| Date/time | Teal/blue tint | |
+| BLOB/binary | Purple tint, size label | |
 
 ---
 
 ## Icon System
 
-All icons should be 16×16 px SVG, single-colour with `currentColor` fill/stroke, so they
-automatically adapt to light/dark themes and text colour overrides.
+All icons: 16×16 px inline SVG, `fill="none"`, `stroke="currentColor"`, `stroke-width="1.3–1.5"`.
 
-Key icons to redesign (currently PNG or complex SVG):
-
-| Icon | File(s) | New style notes |
-|------|---------|-----------------|
-| Database | `org.jkiss.dbeaver.ui/icons/database.svg` | Thin-stroke cylinder |
-| Connect | `org.jkiss.dbeaver.ui/icons/database_connect.svg` | Cylinder + lightning bolt |
-| Table | `model/icons/table.svg` | Simple 2×3 grid lines |
-| Column | `model/icons/column.svg` | Single vertical line + label |
-| Index | `model/icons/index.svg` | Thin funnel |
-| View | `model/icons/view.svg` | Eye outline |
-| Procedure | `model/icons/procedure.svg` | `{}` braces |
-| Schema | `model/icons/schema.svg` | Stacked layers |
-| SQL Execute | `ui/icons/misc/sql.svg` | Play triangle, clean |
-| Filter | `ui/icons/misc/filter.svg` | Funnel, 2 lines |
-| Expand/Collapse | `ui/icons/misc/expand.svg`, `collapse.svg` | Chevron right/down |
+| UI element | Icon description |
+|------------|-----------------|
+| Activity bar — navigator | Cylinder (3-layer database) |
+| Activity bar — search | Circle + diagonal line |
+| Activity bar — projects | Folder outline |
+| Activity bar — ER | Two rectangles + connecting line |
+| Activity bar — settings | Gear (circle + spokes) |
+| Tree — expand arrow | Right-pointing chevron; rotates 90° when open |
+| Tree — connection | Cylinder, coloured by type |
+| Tree — schema | Folder |
+| Tree — tables group | Grid with row/column lines |
+| Tree — table | Grid with row/column lines (same, leaf node) |
+| Tree — view | Eye outline |
+| Tree — procedure | Curly-brace outline |
+| Tab — SQL file | Document with text lines |
+| Tab — table viewer | Grid icon |
+| Toolbar — Run | Filled play triangle |
+| Toolbar — Stop | Filled square |
+| Toolbar — Commit | Checkmark |
+| Toolbar — Rollback | Circular arrow |
+| Toolbar — Explain | Clock/timer |
+| Status badge | Filled circle (green/grey/amber) |
 
 ---
 
 ## Files to Change
 
-### CSS / Theme files
+### CSS (Eclipse e4 theme stylesheets)
 
 | File | Change |
 |------|--------|
-| `plugins/org.jkiss.dbeaver.core/css/e4-dbeaver_prefstyle.css` | Light theme colours and layout metrics |
-| `plugins/org.jkiss.dbeaver.core/css/e4-dark_dbeaver_prefstyle.css` | Dark theme colour overrides |
+| `plugins/org.jkiss.dbeaver.core/css/e4-dbeaver_prefstyle.css` | Light surface colours; tab border-radius 0 (flat tabs) |
+| `plugins/org.jkiss.dbeaver.core/css/e4-dark_dbeaver_prefstyle.css` | Dark token overrides |
 | `plugins/org.jkiss.dbeaver.ui/css/e4-high_contrast_dbeaver_prefstyle.css` | High-contrast overrides |
-| `plugins/org.jkiss.dbeaver.ui.editors.data/css/e4-data-editor.css` | Results grid light colours |
-| `plugins/org.jkiss.dbeaver.ui.editors.data/css/e4-dark-data-editor.css` | Results grid dark colours |
-| `plugins/org.jkiss.dbeaver.ui.editors.sql/css/e4-dark-sql-editor.css` | SQL syntax dark colours |
-| `plugins/org.jkiss.dbeaver.ui.editors.erd/css/e4-dark-erd-editor.css` | ERD diagram dark colours |
+| `plugins/org.jkiss.dbeaver.ui.editors.data/css/e4-data-editor.css` | Grid light colours |
+| `plugins/org.jkiss.dbeaver.ui.editors.data/css/e4-dark-data-editor.css` | Grid dark colours |
+| `plugins/org.jkiss.dbeaver.ui.editors.sql/css/e4-dark-sql-editor.css` | SQL dark syntax tokens |
+| `plugins/org.jkiss.dbeaver.ui.editors.erd/css/e4-dark-erd-editor.css` | ERD dark colours |
 
-### Plugin.xml — color/font definitions
+### plugin.xml — colour/font definitions
 
 | File | Change |
 |------|--------|
-| `plugins/org.jkiss.dbeaver.core/plugin.xml` | Update `colorDefinition` values: accent, txn colours, connection-type colours |
-| `plugins/org.jkiss.dbeaver.ui/plugin.xml` | Update font families/sizes (`Segoe UI`, `JetBrains Mono`); accent colour `#2A7FE8` |
+| `plugins/org.jkiss.dbeaver.core/plugin.xml` | Connection-type colours; txn status colours |
+| `plugins/org.jkiss.dbeaver.ui/plugin.xml` | Accent `#005fb8`; fonts to `Inter`/`JetBrains Mono` |
 
-### Icons (SVG)
+### Java (minimal, surgical)
 
-All icons listed in the **Icon System** section above.
+| File | Change |
+|------|--------|
+| `plugins/org.jkiss.dbeaver.core/src/.../DBeaverCTabFolderRenderer.java` | Remove gradient fill; draw 1 px accent line on top of active tab instead |
+| `plugins/org.jkiss.dbeaver.ui.app.standalone/src/.../ApplicationWorkbenchWindowAdvisor.java` | Add activity bar composite (or use existing perspective bar layout) |
+
+### Icons (SVG replacements)
+
+All icons listed in the **Icon System** table above, located in:
+- `plugins/org.jkiss.dbeaver.ui/icons/` (main UI icons)
+- `plugins/org.jkiss.dbeaver.model/icons/` (database object icons)
+- `plugins/org.jkiss.dbeaver.ui.app.standalone/icons/` (app icons)
 
 ### Splash screen
 
 | File | Change |
 |------|--------|
-| `plugins/org.jkiss.dbeaver.ui.app.standalone/splash.png` | New minimal splash: dark background `#1C1E22`, centred white logo, version string |
-
-### Custom tab renderer (Java — optional, low-impact)
-
-| File | Change |
-|------|--------|
-| `plugins/org.jkiss.dbeaver.core/src/.../DBeaverCTabFolderRenderer.java` | Adjust tab corner radius (3 px), remove gradient painting, draw 2 px accent underline on selected tab |
+| `plugins/org.jkiss.dbeaver.ui.app.standalone/splash.png` | Dark `#111111` background, centred white DBeaver wordmark, version bottom-right |
 
 ---
 
 ## Mockup Files
 
-Interactive HTML mockups are located in `docs/design/mockups/`:
-
 | File | Contents |
 |------|----------|
-| `01_main_window_light.html` | Full application window — light theme |
-| `02_main_window_dark.html` | Full application window — dark theme |
-| `03_sql_editor_dark.html` | SQL editor panel with syntax highlighting |
-| `04_connection_wizard.html` | New connection dialog |
-| `05_results_grid.html` | Data results grid with all cell states |
+| `docs/design/mockups/01_main_window_light.html` | Full app window, VS Code Light+ theme |
+| `docs/design/mockups/02_main_window_dark.html` | Full app window, Zed/VS Code Dark+ theme |
+| `docs/design/mockups/03_sql_editor_dark.html` | SQL editor with autocomplete popup, inline error tooltip, context sidebar |
+| `docs/design/mockups/04_connection_wizard.html` | New connection dialog with step indicator and driver list |
+| `docs/design/mockups/05_results_grid.html` | Results grid showing all cell/row states |
 
 ---
 
-## Implementation Order (Suggested)
+## Implementation Order
 
-1. **Colour tokens** — update CSS preference files and plugin.xml color definitions
-2. **Typography** — update font definitions (Segoe UI / JetBrains Mono)
-3. **Results grid** — CSS is isolated; quick win
-4. **SQL editor** — CSS only
-5. **Icons** — replace SVGs one group at a time
-6. **Tab renderer** — small Java change for tab underline / corner radius
-7. **Splash screen** — PNG asset swap
-8. **QA pass** — verify on Windows, macOS, Linux; light and dark; high-contrast
+1. **CSS colour tokens** — update e4 CSS files (no Java build needed, hot-reloadable)
+2. **SQL editor syntax** — update dark SQL editor CSS
+3. **Results grid** — update data editor CSS
+4. **Fonts** — update `plugin.xml` font definitions
+5. **Icons** — replace SVG files group by group (tree icons → toolbar → status)
+6. **Tab renderer** — minimal Java change (remove gradient, add accent line)
+7. **Activity bar** — layout change (perspective switcher → icon-only activity bar)
+8. **Splash screen** — PNG asset swap
 
 ---
 
-*This document accompanies the HTML mockup files. Colour values and layout dimensions should
-be treated as targets; exact values may need slight adjustment after on-screen verification.*
+*Colour values and measurements are targets; verify on-screen at 100% and 150% HiDPI scaling.*
