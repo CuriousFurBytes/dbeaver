@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<!-- DESIGN v2: VS Code-style data grid — all cell states, boolean pills, dense rows -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DBeaver — Results Grid · All States</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #f5f5f5;
+  --surface:  #ffffff;
+  --panel:    #f0f0f0;
+  --border:   #e0e0e0;
+  --border2:  #cccccc;
+  --text:     #1e1e1e;
+  --text2:    #5e5e5e;
+  --text3:    #a0a0a0;
+  --accent:   #005fb8;
+  --accent-bg:#e8f2fd;
+  --success:  #14854f;
+  --warn:     #b46200;
+  --error:    #bf1717;
+  --font: Inter, "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", Consolas, monospace;
+}
+body { background: var(--bg); font-family: var(--font); font-size: 13px;
+  color: var(--text); padding: 24px; display: flex; flex-direction: column;
+  gap: 20px; -webkit-font-smoothing: antialiased; }
+
+h1 { font-size: 15px; font-weight: 600; letter-spacing: -.2px; }
+.desc { font-size: 12px; color: var(--text2); margin-top: 3px; }
+
+/* Toolbar */
+.grid-toolbar {
+  display: flex; align-items: center; height: 30px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-bottom: none; border-radius: 5px 5px 0 0;
+  padding: 0 8px; gap: 2px;
+}
+.tb { height: 24px; padding: 0 8px; display: flex; align-items: center; gap: 5px;
+  border-radius: 3px; cursor: pointer; color: var(--text2);
+  border: none; background: none; font-size: 11px; font-family: var(--font); }
+.tb:hover { background: var(--border); color: var(--text); }
+.tb svg { width: 12px; height: 12px; }
+.tb-sep { width: 1px; height: 14px; background: var(--border2); margin: 0 2px; }
+.tb-right { margin-left: auto; font-size: 11px; color: var(--text2); font-family: var(--mono); }
+
+/* Grid */
+.grid-wrap { background: var(--surface); border: 1px solid var(--border);
+  border-radius: 0 0 5px 5px; overflow: auto; max-height: 500px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: var(--mono); }
+th {
+  background: var(--panel); border-bottom: 1px solid var(--border2);
+  border-right: 1px solid var(--border); padding: 0 10px; height: 26px;
+  text-align: left; font-family: var(--font); font-weight: 600;
+  color: var(--text2); font-size: 11px; white-space: nowrap;
+  position: sticky; top: 0; z-index: 1; cursor: pointer; user-select: none;
+}
+th:hover { background: #e8e8e8; }
+th.sorted { color: var(--accent); }
+th.rn { width: 40px; text-align: right; color: var(--text3); cursor: default; }
+th.rn:hover { background: var(--panel); }
+th .sort { font-size: 9px; margin-left: 3px; }
+td { padding: 0 10px; height: 22px; border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  white-space: nowrap; overflow: hidden; max-width: 200px; text-overflow: ellipsis; }
+tr:nth-child(even) td { background: #fafafa; }
+tr:hover td { background: var(--accent-bg) !important; }
+
+/* Cell types */
+td.rn   { color: var(--text3); text-align: right; font-size: 11px; }
+td.num  { text-align: right; color: #097048; }
+td.null { color: var(--text3); font-style: italic; font-family: var(--font); font-size: 11px; }
+td.date { color: #0066a6; }
+td.blob { color: #7c56b4; font-size: 11px; }
+
+/* Row states */
+tr.row-sel  td { background: var(--accent-bg) !important; }
+tr.row-new  td { background: #f0fdf4 !important; }
+tr.row-mod  td { background: #fffbeb !important; }
+tr.row-del  td { background: #fff0f0 !important; color: var(--text3); text-decoration: line-through; }
+
+/* Cell states */
+td.cell-err   { background: #fff0f0 !important; color: var(--error) !important; border-bottom-color: #fca5a5 !important; }
+td.cell-match { background: #fef9c3 !important; }
+td.cell-mod   { background: #fffbeb !important; font-style: italic; }
+
+/* Boolean pill */
+.pill { display: inline-flex; align-items: center; justify-content: center;
+  padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: 600;
+  font-family: var(--font); }
+.pill-t { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.pill-f { background: var(--panel); color: var(--text3); border: 1px solid var(--border2); }
+
+/* Row number special markers */
+td.rn.new-marker { color: var(--success); font-weight: 600; }
+td.rn.del-marker { color: var(--error); font-weight: 600; }
+
+/* Legend */
+.legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px 16px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 5px; }
+.leg { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text2); }
+.leg-sw { width: 14px; height: 14px; border-radius: 2px; border: 1px solid var(--border); flex-shrink: 0; }
+
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #999; background-clip: padding-box; }
+</style>
+</head>
+<body>
+
+<div>
+  <h1>Results Grid — All Cell &amp; Row States</h1>
+  <p class="desc">Default · selected · new row · modified · deleted · cell error · cell modified · search match</p>
+</div>
+
+<div>
+  <div class="grid-toolbar">
+    <button class="tb" title="Refresh">
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4">
+        <path d="M2 5A4.5 4.5 0 1110 8" stroke-linecap="round" fill="none"/>
+        <path d="M2 2.5V5H4.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Refresh
+    </button>
+    <button class="tb" title="Add row">
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4">
+        <path d="M6 2v8M2 6h8" stroke-linecap="round"/>
+      </svg>
+      Add row
+    </button>
+    <button class="tb" title="Delete row">
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4">
+        <path d="M2 6h8" stroke-linecap="round"/>
+        <path d="M4 2.5h4M3 3.5v7h6v-7"/>
+      </svg>
+      Delete
+    </button>
+    <div class="tb-sep"></div>
+    <button class="tb" title="Apply changes">
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M2 6l3 3 5-5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Apply
+    </button>
+    <button class="tb" title="Revert">
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4">
+        <path d="M2.5 4.5H1V3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M1 4.5A5 5 0 105 1.5" stroke-linecap="round" fill="none"/>
+      </svg>
+      Revert
+    </button>
+    <div class="tb-sep"></div>
+    <button class="tb" title="Filter">
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3">
+        <path d="M1 3h10L7 7.5v4l-2-1V7.5L1 3z" stroke-linejoin="round"/>
+      </svg>
+      Filter
+    </button>
+    <button class="tb" title="Configure columns">
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3">
+        <path d="M4 1v10M8 1v10M1 4h10M1 8h10"/>
+      </svg>
+      Columns
+    </button>
+    <span class="tb-right">8 / 1 432 rows</span>
+  </div>
+
+  <div class="grid-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="rn">#</th>
+          <th class="sorted">id<span class="sort">▲</span></th>
+          <th>name</th>
+          <th>email</th>
+          <th>status</th>
+          <th>is_active</th>
+          <th>balance</th>
+          <th>created_at</th>
+          <th>avatar</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- Normal -->
+        <tr>
+          <td class="rn">1</td><td class="num">101</td><td>Alice Müller</td>
+          <td>alice@example.com</td><td>active</td>
+          <td><span class="pill pill-t">true</span></td>
+          <td class="num">4 820.50</td><td class="date">2024-01-15</td>
+          <td class="blob">&lt;BLOB 4.2 KB&gt;</td>
+        </tr>
+
+        <!-- Selected -->
+        <tr class="row-sel">
+          <td class="rn">2</td><td class="num">102</td><td>Bob Chen</td>
+          <td>bchen@corp.io</td><td>active</td>
+          <td><span class="pill pill-t">true</span></td>
+          <td class="num">3 210.00</td><td class="date">2024-02-20</td>
+          <td class="null">NULL</td>
+        </tr>
+
+        <!-- NULL values -->
+        <tr>
+          <td class="rn">3</td><td class="num">103</td>
+          <td class="null">NULL</td>
+          <td>carol@davis.net</td><td>inactive</td>
+          <td><span class="pill pill-f">false</span></td>
+          <td class="num">0.00</td>
+          <td class="null">NULL</td>
+          <td class="null">NULL</td>
+        </tr>
+
+        <!-- Modified row -->
+        <tr class="row-mod">
+          <td class="rn">4</td><td class="num">104</td>
+          <td class="cell-mod">David Park Jr.</td>
+          <td>dpark@mail.co</td><td>pending</td>
+          <td><span class="pill pill-f">false</span></td>
+          <td class="num">87.20</td><td class="date">2024-03-01</td>
+          <td class="null">NULL</td>
+        </tr>
+
+        <!-- New row -->
+        <tr class="row-new">
+          <td class="rn new-marker">+</td>
+          <td class="null" style="font-family:var(--font);font-size:11px">auto</td>
+          <td>Eve Nakamura</td><td>eve@new.io</td><td>active</td>
+          <td><span class="pill pill-t">true</span></td>
+          <td class="num">0.00</td><td class="date">2026-03-02</td>
+          <td class="null">NULL</td>
+        </tr>
+
+        <!-- Cell error -->
+        <tr>
+          <td class="rn">6</td><td class="num">106</td><td>Frank O'Brien</td>
+          <td class="cell-err">not-an-email</td>
+          <td>active</td>
+          <td><span class="pill pill-t">true</span></td>
+          <td class="num">1 500.00</td><td class="date">2024-06-18</td>
+          <td class="null">NULL</td>
+        </tr>
+
+        <!-- Deleted row -->
+        <tr class="row-del">
+          <td class="rn del-marker">−</td><td class="num">107</td>
+          <td>Grace Lee</td><td>grace@example.net</td><td>deleted</td>
+          <td><span class="pill pill-f">false</span></td>
+          <td class="num">0.00</td><td class="date">2023-11-30</td>
+          <td class="null">NULL</td>
+        </tr>
+
+        <!-- Search match -->
+        <tr>
+          <td class="rn">8</td><td class="num">108</td>
+          <td class="cell-match">Alice Smith</td>
+          <td>asmith@org.edu</td><td>active</td>
+          <td><span class="pill pill-t">true</span></td>
+          <td class="num">2 900.00</td><td class="date">2025-01-08</td>
+          <td class="null">NULL</td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="leg"><div class="leg-sw" style="background:#fff"></div>Default</div>
+  <div class="leg"><div class="leg-sw" style="background:#fafafa"></div>Alternate row</div>
+  <div class="leg"><div class="leg-sw" style="background:#e8f2fd;border-color:#93c5fd"></div>Selected</div>
+  <div class="leg"><div class="leg-sw" style="background:#f0fdf4;border-color:#86efac"></div>New row</div>
+  <div class="leg"><div class="leg-sw" style="background:#fffbeb;border-color:#fcd34d"></div>Modified row / cell</div>
+  <div class="leg"><div class="leg-sw" style="background:#fff0f0;border-color:#fca5a5"></div>Deleted / error</div>
+  <div class="leg"><div class="leg-sw" style="background:#fef9c3;border-color:#fcd34d"></div>Search match</div>
+</div>
+
+</body>
+</html>

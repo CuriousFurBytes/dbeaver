@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<!-- DESIGN v2: Zed-inspired SQL editor — autocomplete, diagnostics, minimap strip, column sidebar -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DBeaver — SQL Editor · Dark</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --editor-bg:  #111111;
+  --sidebar-bg: #1a1a1a;
+  --panel-bg:   #161616;
+  --actbar-bg:  #131313;
+  --border:     #2a2a2a;
+  --text:       #d4d4d4;
+  --text2:      #858585;
+  --text3:      #4a4a4a;
+  --accent:     #4d9ef5;
+  --accent-bg:  #1a3b5e;
+  --success:    #4caf74;
+  --warn:       #e8a600;
+  --error:      #f14c4c;
+  --font: Inter, "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+}
+body { font-family: var(--font); font-size: 13px; color: var(--text);
+  background: var(--editor-bg); height: 100vh; display: flex;
+  flex-direction: column; overflow: hidden; -webkit-font-smoothing: antialiased; }
+
+/* ── Tab + toolbar strip ── */
+.tab-strip {
+  background: var(--actbar-bg); border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; flex-shrink: 0;
+}
+.tabs { display: flex; align-items: flex-end; height: 36px; overflow: hidden; }
+.tab {
+  height: 35px; padding: 0 10px 0 14px;
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12px; cursor: pointer; color: var(--text2);
+  background: var(--panel-bg); border-right: 1px solid var(--border);
+  white-space: nowrap; position: relative;
+}
+.tab.active { background: var(--editor-bg); color: var(--text); border-bottom: 1px solid transparent; }
+.tab.active::after { content:""; position:absolute; top:0; left:0; right:0; height:1px; background:var(--accent); }
+.tab .tc { width:16px; height:16px; display:flex; align-items:center; justify-content:center; border-radius:3px; color:transparent; }
+.tab:hover .tc, .tab.active .tc { color: var(--text3); }
+.tab .tc svg { width:9px; height:9px; }
+.tab .dot { width:6px; height:6px; border-radius:50%; background:var(--text3); position:absolute; left:6px; top:50%; transform:translateY(-50%); }
+.tab-new { width:36px; display:flex; align-items:center; justify-content:center; color:var(--text3); cursor:pointer; font-size:16px; height:35px; }
+.tab-new:hover { color:var(--text); }
+
+.editor-toolbar {
+  height: 28px; background: var(--panel-bg);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 8px; gap: 2px;
+}
+.tb { height:22px; padding:0 8px; display:flex; align-items:center; gap:4px;
+  border-radius:3px; cursor:pointer; color:var(--text2);
+  border:none; background:none; font-size:11px; font-family:var(--font); }
+.tb:hover { background:rgba(255,255,255,0.07); color:var(--text); }
+.tb.run { color:#fff; background:#0e639c; }
+.tb.run:hover { background:#1177bb; }
+.tb svg { width:11px; height:11px; }
+.tb-sep { width:1px; height:14px; background:var(--border); margin:0 2px; }
+.tb-right { margin-left:auto; display:flex; align-items:center; gap:4px; }
+.chip { height:20px; padding:0 8px; border-radius:3px; border:1px solid var(--border);
+  background:var(--editor-bg); display:flex; align-items:center; gap:5px;
+  font-size:11px; color:var(--text2); cursor:pointer; }
+.chip:hover { border-color:var(--accent); }
+.cdot { width:6px; height:6px; border-radius:50%; }
+
+/* ── Breadcrumb ── */
+.bc {
+  height:20px; background:var(--editor-bg); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; padding:0 16px; gap:2px;
+  font-size:11px; color:var(--text2); flex-shrink:0;
+}
+.bc .cr { display:flex; align-items:center; gap:3px; cursor:pointer; }
+.bc .cr:hover { color:var(--text); }
+.bc .sep { color:var(--text3); margin:0 1px; }
+.bc .active { color:var(--text); }
+
+/* ── Editor + right panel ── */
+.editor-main { flex:1; display:flex; overflow:hidden; }
+
+/* Indicator gutter (errors/warnings) */
+.ind { width:18px; min-width:18px; background:var(--editor-bg); padding:12px 0; }
+.ind-row { height:calc(13px*1.65); display:flex; align-items:center; justify-content:center; }
+.ind-error svg { color:var(--error); }
+.ind-warn  svg { color:var(--warn); }
+.ind-cur   { color:var(--accent); font-size:9px; }
+
+/* Line numbers */
+.gutter {
+  min-width:52px; padding:12px 0; background:var(--editor-bg);
+  text-align:right; color:var(--text3); font-size:12px; font-family:var(--mono);
+  border-right:1px solid var(--border); user-select:none;
+}
+.gl { height:calc(13px*1.65); padding-right:14px; display:flex; align-items:center; justify-content:flex-end; }
+.gl.cur { color:var(--text2); }
+.gl.err { color:var(--error); }
+
+/* Code */
+.code { flex:1; overflow:auto; padding:12px 0 12px 18px; font-family:var(--mono); font-size:13px; line-height:1.65; }
+.cl { height: calc(13px * 1.65); line-height: calc(13px * 1.65); white-space: pre; }
+.cl.cur { background:rgba(77,158,245,0.06); }
+.cl.err-line { background:rgba(241,76,76,0.06); }
+.kw  { color:#569cd6; font-weight:500; }
+.str { color:#ce9178; }
+.cm  { color:#6a9955; font-style:italic; }
+.fn  { color:#dcdcaa; }
+.tp  { color:#4ec9b0; }
+.nm  { color:#b5cea8; }
+.tb-s{ color:#d4d4d4; font-weight:500; }
+.co  { color:#9cdcfe; }
+.op  { color:#d4d4d4; }
+.err-tok { text-decoration: underline wavy var(--error); text-underline-offset:2px; }
+
+/* Autocomplete popup */
+.ac-popup {
+  position:absolute;
+  top: calc(12px + 7 * 13px * 1.65);
+  left: calc(18px + 18px + 52px + 22ch);
+  width:260px; background:#252526;
+  border:1px solid var(--border); border-radius:5px;
+  overflow:hidden; z-index:20;
+  box-shadow: 0 4px 16px rgba(0,0,0,.5);
+}
+.ac-hdr { padding:4px 10px 4px 12px; font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.07em; color:var(--text3);
+  background:var(--panel-bg); border-bottom:1px solid var(--border); }
+.ac-item { display:flex; align-items:center; gap:8px; padding:4px 10px; cursor:pointer; }
+.ac-item.sel { background:var(--accent-bg); }
+.ac-item:hover { background:rgba(255,255,255,0.04); }
+.ac-ico { width:15px; text-align:center; flex-shrink:0; }
+.ac-ico svg { width:13px; height:13px; color:var(--text3); }
+.ac-name { flex:1; font-family:var(--mono); font-size:12px; color:var(--text); }
+.ac-type { font-size:10px; color:var(--text3); font-family:var(--font); }
+.ac-item.sel .ac-name { color:#92c5f8; }
+
+/* Inline error tooltip */
+.err-tip {
+  position:absolute;
+  background:#2d1616; border:1px solid #6b2222;
+  border-radius:4px; padding:6px 10px; font-size:11px; font-family:var(--font);
+  color:#f8a0a0; max-width:280px; z-index:21; line-height:1.5;
+}
+
+/* Right context panel */
+.ctx-panel {
+  width:178px; min-width:178px; border-left:1px solid var(--border);
+  display:flex; flex-direction:column; background:var(--sidebar-bg); overflow:hidden;
+}
+.ctx-section { border-bottom:1px solid var(--border); flex-shrink:0; }
+.ctx-section.grow { flex:1; overflow-y:auto; }
+.ctx-hdr { padding:8px 10px 4px; font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.07em; color:var(--text3); }
+.ctx-row { display:flex; align-items:center; gap:5px; padding:3px 10px;
+  font-size:11px; color:var(--text2); font-family:var(--mono); }
+.ctx-row svg { width:12px; height:12px; color:var(--text3); flex-shrink:0; }
+.ctx-row strong { color:var(--text); font-weight:500; }
+.ctx-row .ct { font-size:10px; color:var(--text3); margin-left:auto; font-family:var(--font); }
+.ctx-row.new-col { color:var(--accent); }
+.ctx-row.err-row { color:var(--error); }
+
+/* ── Status bar ── */
+.statusbar {
+  height:22px; background:#0e639c;
+  display:flex; align-items:center;
+  padding:0 8px; font-size:11px; color:rgba(255,255,255,.9); flex-shrink:0;
+}
+.sb { display:flex; align-items:center; gap:4px; padding:0 7px; height:22px; cursor:pointer; }
+.sb:hover { background:rgba(255,255,255,.15); }
+.sb svg { width:11px; height:11px; opacity:.8; }
+.sb-err { color:#f8a0a0; }
+.sp { flex:1; }
+
+::-webkit-scrollbar { width:8px; height:8px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); border-radius:10px; border:2px solid transparent; background-clip:padding-box; }
+::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.18); background-clip:padding-box; }
+</style>
+</head>
+<body>
+
+<!-- Tab strip + toolbar -->
+<div class="tab-strip">
+  <div class="tabs">
+    <div class="tab">
+      <svg style="width:13px;height:13px;color:var(--text3);flex-shrink:0" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3">
+        <rect x="2" y="1.5" width="10" height="11" rx="1.5"/>
+        <path d="M4.5 5.5h5M4.5 7.5h5M4.5 9.5h3" stroke-linecap="round"/>
+      </svg>
+      analytics_q1.sql
+      <span class="tc"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2l6 6M8 2l-6 6"/></svg></span>
+    </div>
+    <div class="tab active">
+      <svg style="width:13px;height:13px;color:var(--text3);flex-shrink:0" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3">
+        <rect x="2" y="1.5" width="10" height="11" rx="1.5"/>
+        <path d="M4.5 5.5h5M4.5 7.5h5M4.5 9.5h3" stroke-linecap="round"/>
+      </svg>
+      <span class="dot"></span>
+      schema_migration.sql
+      <span class="tc"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2l6 6M8 2l-6 6"/></svg></span>
+    </div>
+    <div class="tab">
+      <svg style="width:13px;height:13px;color:var(--text3);flex-shrink:0" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3">
+        <rect x="2" y="1.5" width="10" height="11" rx="1.5"/>
+        <path d="M4.5 5.5h5M4.5 7.5h5M4.5 9.5h3" stroke-linecap="round"/>
+      </svg>
+      reports.sql
+      <span class="tc"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2l6 6M8 2l-6 6"/></svg></span>
+    </div>
+    <div class="tab-new" title="New editor">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px"><path d="M7 2v10M2 7h10" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+  <div class="editor-toolbar">
+    <button class="tb run">
+      <svg viewBox="0 0 11 11" fill="currentColor"><path d="M2.5 1.5l7 4-7 4v-8z"/></svg>
+      Run
+    </button>
+    <button class="tb">Selection</button>
+    <div class="tb-sep"></div>
+    <button class="tb">
+      <svg viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.3">
+        <circle cx="5.5" cy="5.5" r="4"/><path d="M5.5 3.5v2.5l1.5 1" stroke-linecap="round"/>
+      </svg>
+      Explain
+    </button>
+    <button class="tb">Format</button>
+    <button class="tb">
+      <svg viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.3">
+        <circle cx="5.5" cy="5.5" r="4"/><path d="M3 5.5h5M6 3.5l2 2-2 2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Find
+    </button>
+    <div class="tb-right">
+      <div class="chip"><div class="cdot" style="background:var(--success)"></div>postgres-dev
+        <svg viewBox="0 0 9 9" fill="none" stroke="currentColor" stroke-width="1.5" style="width:8px;height:8px;opacity:.4"><path d="M1.5 3l3 3 3-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="chip">public
+        <svg viewBox="0 0 9 9" fill="none" stroke="currentColor" stroke-width="1.5" style="width:8px;height:8px;opacity:.4"><path d="M1.5 3l3 3 3-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Breadcrumb -->
+<div class="bc">
+  <div class="cr">
+    <svg viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.2">
+      <ellipse cx="5.5" cy="3" rx="3.5" ry="1.5"/>
+      <path d="M2 3v5c0 .83 1.57 1.5 3.5 1.5S9 8.83 9 8V3"/>
+      <path d="M2 5.5c0 .83 1.57 1.5 3.5 1.5S9 6.33 9 5.5"/>
+    </svg>
+    postgres-dev
+  </div>
+  <span class="sep">›</span>
+  <div class="cr">public</div>
+  <span class="sep">›</span>
+  <div class="cr active">schema_migration.sql</div>
+</div>
+
+<!-- Editor body (wrapper for absolute overlays) -->
+<div class="editor-main" style="position:relative">
+
+  <!-- Indicator strip -->
+  <div class="ind">
+    <div class="ind-row"></div><div class="ind-row"></div>
+    <div class="ind-row"><div class="ind-error"><svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4.5"/></svg></div></div>
+    <div class="ind-row"></div><div class="ind-row"></div>
+    <div class="ind-row"></div><div class="ind-row"></div>
+    <div class="ind-row"><div class="ind-cur">▶</div></div>
+    <div class="ind-row"></div><div class="ind-row"></div>
+    <div class="ind-row"></div><div class="ind-row"></div>
+    <div class="ind-row"></div><div class="ind-row"></div>
+    <div class="ind-row"></div><div class="ind-row"></div>
+    <div class="ind-row"></div><div class="ind-row"></div>
+  </div>
+
+  <!-- Line numbers -->
+  <div class="gutter">
+    <div class="gl">1</div><div class="gl">2</div>
+    <div class="gl err">3</div><div class="gl">4</div>
+    <div class="gl">5</div><div class="gl">6</div>
+    <div class="gl">7</div><div class="gl cur">8</div>
+    <div class="gl">9</div><div class="gl">10</div>
+    <div class="gl">11</div><div class="gl">12</div>
+    <div class="gl">13</div><div class="gl">14</div>
+    <div class="gl">15</div><div class="gl">16</div>
+    <div class="gl">17</div><div class="gl">18</div>
+  </div>
+
+  <!-- Code -->
+  <div class="code">
+    <div class="cl"><span class="cm">-- Schema migration v2.4 — add billing columns</span></div>
+    <div class="cl"></div>
+    <div class="cl err-line"><span class="kw">ALTER TABLE</span>  <span class="tb-s err-tok">usr</span></div>
+    <div class="cl">    <span class="kw">ADD COLUMN</span>  <span class="co">billing_email</span>       <span class="tp">VARCHAR</span>(<span class="nm">255</span>),</div>
+    <div class="cl">    <span class="kw">ADD COLUMN</span>  <span class="co">payment_provider</span>    <span class="tp">VARCHAR</span>(<span class="nm">64</span>)  <span class="kw">DEFAULT</span>  <span class="str">'stripe'</span>,</div>
+    <div class="cl">    <span class="kw">ADD COLUMN</span>  <span class="co">stripe_customer_id</span>  <span class="tp">TEXT</span>,</div>
+    <div class="cl">    <span class="kw">ADD COLUMN</span>  <span class="co">subscription_tier</span>   <span class="tp">SMALLINT</span>  <span class="kw">NOT NULL DEFAULT</span>  <span class="nm">0</span>;</div>
+    <div class="cl cur"></div>
+    <div class="cl"><span class="cm">-- Index for subscription queries</span></div>
+    <div class="cl"><span class="kw">CREATE INDEX</span>  <span class="co">idx_users_subscription</span></div>
+    <div class="cl">    <span class="kw">ON</span>  <span class="tb-s">users</span>  (<span class="co">subscription_tier</span>, <span class="co">created_at</span>)</div>
+    <div class="cl">    <span class="kw">WHERE</span>  <span class="co">subscription_tier</span>  <span class="op">&gt;</span>  <span class="nm">0</span>;</div>
+    <div class="cl"></div>
+    <div class="cl"><span class="cm">-- Back-fill existing rows</span></div>
+    <div class="cl"><span class="kw">UPDATE</span>  <span class="tb-s">users</span></div>
+    <div class="cl">    <span class="kw">SET</span>  <span class="co">billing_email</span>     <span class="op">=</span>  <span class="co">email</span>,</div>
+    <div class="cl">         <span class="co">payment_provider</span>  <span class="op">=</span>  <span class="str">'stripe'</span></div>
+    <div class="cl">    <span class="kw">WHERE</span>  <span class="co">billing_email</span>  <span class="kw">IS NULL</span>;</div>
+  </div>
+
+  <!-- Error tooltip (line 3) -->
+  <div class="err-tip" style="top:calc(20px+2*calc(13px*1.65)+4px); left:calc(18px+52px+18px+23ch)">
+    <strong style="color:var(--error)">Error</strong> — relation "usr" does not exist<br>
+    <span style="color:var(--text3)">Did you mean </span><span style="color:var(--accent);font-family:var(--mono)">users</span><span style="color:var(--text3)">?</span>
+  </div>
+
+  <!-- Autocomplete popup (line 8 cursor) -->
+  <div class="ac-popup" style="top:calc(20px+7*calc(13px*1.65)); left:calc(18px+52px+18px+4ch)">
+    <div class="ac-hdr">Columns — users</div>
+    <div class="ac-item sel">
+      <span class="ac-ico"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1.5" y="1.5" width="10" height="10" rx=".8"/><path d="M1.5 5h10M4.5 5v6.5"/></svg></span>
+      <span class="ac-name">subscription_tier</span>
+      <span class="ac-type">SMALLINT</span>
+    </div>
+    <div class="ac-item">
+      <span class="ac-ico"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1.5" y="1.5" width="10" height="10" rx=".8"/><path d="M1.5 5h10M4.5 5v6.5"/></svg></span>
+      <span class="ac-name">stripe_customer_id</span>
+      <span class="ac-type">TEXT</span>
+    </div>
+    <div class="ac-item">
+      <span class="ac-ico"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1.5" y="1.5" width="10" height="10" rx=".8"/><path d="M1.5 5h10M4.5 5v6.5"/></svg></span>
+      <span class="ac-name">billing_email</span>
+      <span class="ac-type">VARCHAR(255)</span>
+    </div>
+    <div class="ac-item">
+      <span class="ac-ico"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1.5" y="1.5" width="10" height="10" rx=".8"/><path d="M1.5 5h10M4.5 5v6.5"/></svg></span>
+      <span class="ac-name">payment_provider</span>
+      <span class="ac-type">VARCHAR(64)</span>
+    </div>
+    <div class="ac-item">
+      <span class="ac-ico"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1.5" y="1.5" width="10" height="10" rx=".8"/><path d="M1.5 5h10M4.5 5v6.5"/></svg></span>
+      <span class="ac-name">created_at</span>
+      <span class="ac-type">TIMESTAMPTZ</span>
+    </div>
+  </div>
+
+  <!-- Right context panel -->
+  <div class="ctx-panel">
+    <div class="ctx-section" style="padding-bottom:8px">
+      <div class="ctx-hdr">Object</div>
+      <div class="ctx-row">
+        <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2">
+          <rect x="1.5" y="1.5" width="10" height="10" rx=".8"/><path d="M1.5 5h10M4.5 5v6.5"/>
+        </svg>
+        <strong>users</strong>
+      </div>
+      <div class="ctx-row" style="font-size:10px;color:var(--text3);padding-left:22px">postgres-dev › public</div>
+    </div>
+    <div class="ctx-section grow">
+      <div class="ctx-hdr">Columns</div>
+      <div class="ctx-row">
+        <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1.5" y="1.5" width="10" height="10" rx=".8"/><path d="M1.5 5h10M4.5 5v6.5"/></svg>
+        id <span class="ct">INT4</span>
+      </div>
+      <div class="ctx-row">
+        <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1.5" y="1.5" width="10" height="10" rx=".8"/><path d="M1.5 5h10M4.5 5v6.5"/></svg>
+        name <span class="ct">TEXT</span>
+      </div>
+      <div class="ctx-row">
+        <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1.5" y="1.5" width="10" height="10" rx=".8"/><path d="M1.5 5h10M4.5 5v6.5"/></svg>
+        email <span class="ct">TEXT</span>
+      </div>
+      <div class="ctx-row new-col">
+        <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1.5" y="1.5" width="10" height="10" rx=".8"/><path d="M1.5 5h10M4.5 5v6.5"/></svg>
+        billing_email <span class="ct">VARCHAR</span>
+      </div>
+      <div class="ctx-row new-col">
+        <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1.5" y="1.5" width="10" height="10" rx=".8"/><path d="M1.5 5h10M4.5 5v6.5"/></svg>
+        sub_tier <span class="ct">INT2</span>
+      </div>
+      <div class="ctx-row">
+        <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1.5" y="1.5" width="10" height="10" rx=".8"/><path d="M1.5 5h10M4.5 5v6.5"/></svg>
+        created_at <span class="ct">TSTZ</span>
+      </div>
+    </div>
+    <div class="ctx-section" style="padding-bottom:8px">
+      <div class="ctx-hdr">Issues</div>
+      <div class="ctx-row err-row">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6" cy="6" r="4.5"/><path d="M6 3.5v3M6 8h.01" stroke-linecap="round"/></svg>
+        1 error · line 3
+      </div>
+    </div>
+  </div>
+
+</div><!-- /editor-main -->
+
+<!-- Status bar -->
+<div class="statusbar">
+  <div class="sb">
+    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3">
+      <circle cx="6" cy="4" r="2.5"/><path d="M1.5 11V9a4.5 4.5 0 019 0v2"/>
+    </svg>
+    postgres-dev
+  </div>
+  <div class="sb">public</div>
+  <div class="sb sb-err">
+    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6" cy="6" r="4.5"/><path d="M6 3.5v3M6 8h.01" stroke-linecap="round"/></svg>
+    1 error
+  </div>
+  <div class="sp"></div>
+  <div class="sb">Ln 8, Col 1</div>
+  <div class="sb">UTF-8</div>
+  <div class="sb">SQL (PostgreSQL)</div>
+</div>
+
+</body>
+</html>

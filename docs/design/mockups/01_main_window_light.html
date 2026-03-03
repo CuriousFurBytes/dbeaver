@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<!-- DESIGN v2: VS Code Light+ / Zed / Slack inspired — no emoji icons, activity bar layout -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DBeaver — Main Window · Light</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Design tokens (VS Code Light+ palette) ── */
+:root {
+  /* Surfaces */
+  --editor-bg:    #ffffff;
+  --sidebar-bg:   #f3f3f3;
+  --actbar-bg:    #2c2c2c;   /* activity bar stays dark, VS Code convention */
+  --tab-active:   #ffffff;
+  --tab-inactive: #ececec;
+  --toolbar-bg:   #f8f8f8;
+  --panel-bg:     #f3f3f3;
+  --statusbar-bg: #005fb8;   /* VS Code blue status bar */
+  --input-bg:     #ffffff;
+
+  /* Borders */
+  --border:       #e5e5e5;
+  --border-mid:   #d0d0d0;
+
+  /* Text */
+  --text:         #1e1e1e;
+  --text2:        #616161;
+  --text3:        #a0a0a0;
+  --text-invert:  #f0f0f0;
+
+  /* Accent / semantic */
+  --accent:       #005fb8;
+  --accent-light: #ddeeff;
+  --success:      #14854f;
+  --warn:         #b46200;
+  --error:        #bf1717;
+
+  /* Tree indent guides */
+  --indent-guide: #d8d8d8;
+
+  /* Connection type stripes */
+  --conn-dev:     #5897d5;
+  --conn-qa:      #4da86e;
+  --conn-prod:    #d0544a;
+
+  /* Dimensions */
+  --actbar-w:   48px;
+  --sidebar-w:  248px;
+  --tab-h:      35px;
+  --toolbar-h:  30px;
+  --status-h:   22px;
+  --breadcrumb-h: 22px;
+
+  /* Typography */
+  --font: Inter, 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
+  --fs:   13px;
+  --fs-sm: 11px;
+  --fs-xs: 11px;
+}
+
+body {
+  font-family: var(--font);
+  font-size: var(--fs);
+  color: var(--text);
+  background: var(--editor-bg);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Title bar (compact, native-like) ── */
+.titlebar {
+  height: 30px;
+  background: var(--actbar-bg);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 0;
+  flex-shrink: 0;
+  user-select: none;
+}
+.titlebar-traffic {
+  display: flex; gap: 6px; margin-right: 16px;
+}
+.titlebar-traffic span {
+  width: 12px; height: 12px; border-radius: 50%;
+  display: block;
+}
+.tc-close  { background: #ff5f57; }
+.tc-min    { background: #febc2e; }
+.tc-max    { background: #28c840; }
+.titlebar-menu {
+  display: flex; gap: 0;
+}
+.titlebar-menu a {
+  padding: 0 10px; height: 30px; display: flex; align-items: center;
+  font-size: var(--fs-sm); color: rgba(255,255,255,0.7); cursor: pointer;
+  text-decoration: none;
+}
+.titlebar-menu a:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.titlebar-title {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  font-size: var(--fs-sm); color: rgba(255,255,255,0.5); pointer-events: none;
+}
+
+/* ── Main area below title bar ── */
+.workspace {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ── Activity bar ── */
+.actbar {
+  width: var(--actbar-w);
+  min-width: var(--actbar-w);
+  background: var(--actbar-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 0;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.act-btn {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  color: rgba(255,255,255,0.45);
+  position: relative;
+}
+.act-btn:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.07); }
+.act-btn.active { color: #ffffff; }
+.act-btn.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 25%; bottom: 25%;
+  width: 2px;
+  background: #005fb8;
+  border-radius: 0 2px 2px 0;
+}
+.act-btn svg { width: 20px; height: 20px; }
+.act-spacer { flex: 1; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-header {
+  height: 35px;
+  display: flex; align-items: center;
+  padding: 0 12px 0 16px;
+  gap: 6px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--sidebar-bg);
+}
+.sidebar-header span {
+  font-size: var(--fs-xs); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text2); flex: 1;
+}
+.icon-btn {
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 4px; cursor: pointer; color: var(--text3);
+  background: none; border: none;
+}
+.icon-btn:hover { background: var(--border-mid); color: var(--text2); }
+.icon-btn svg { width: 15px; height: 15px; }
+
+/* Tree view */
+.tree { flex: 1; overflow-y: auto; padding: 4px 0; }
+.tree-row {
+  display: flex; align-items: center;
+  height: 22px;
+  padding-right: 8px;
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  position: relative;
+  user-select: none;
+}
+.tree-row:hover { background: rgba(0,0,0,0.04); }
+.tree-row.selected { background: var(--accent-light); color: var(--accent); }
+.tree-row .indent { position: relative; display: flex; align-items: center; }
+/* indent guide */
+.tree-row .indent-guide {
+  position: absolute;
+  left: 11px; top: -11px; bottom: -11px;
+  width: 1px;
+  background: var(--indent-guide);
+}
+.tree-row .chevron {
+  width: 16px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.tree-row .chevron svg { width: 10px; height: 10px; color: var(--text3); }
+.tree-row .chevron.open svg { transform: rotate(90deg); }
+.tree-row .node-icon {
+  width: 16px; height: 16px; flex-shrink: 0; margin-right: 5px;
+  display: flex; align-items: center; justify-content: center;
+}
+.tree-row .node-icon svg { width: 15px; height: 15px; }
+.tree-row .label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-row .badge {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-left: 4px;
+}
+.badge-ok     { background: var(--success); }
+.badge-off    { background: var(--text3); }
+.badge-warn   { background: var(--warn); }
+
+/* Connection type accent strip */
+.conn-strip {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+}
+.strip-dev  { background: var(--conn-dev); }
+.strip-qa   { background: var(--conn-qa); }
+.strip-prod { background: var(--conn-prod); }
+
+/* ── Editor area ── */
+.editor-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--editor-bg);
+}
+
+/* Tab strip (VS Code style — no outer borders) */
+.tabs {
+  height: var(--tab-h);
+  background: var(--tab-inactive);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  height: 34px;
+  padding: 0 10px 0 14px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--fs-sm); cursor: pointer;
+  background: var(--tab-inactive);
+  color: var(--text2);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  position: relative;
+}
+.tab.active {
+  background: var(--tab-active);
+  color: var(--text);
+  border-bottom: 1px solid transparent;
+}
+.tab.active::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: var(--accent);
+}
+.tab .tab-icon svg { width: 14px; height: 14px; flex-shrink: 0; }
+.tab .tab-close {
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 3px; color: transparent; font-size: 11px;
+}
+.tab:hover .tab-close { color: var(--text3); }
+.tab.active .tab-close { color: var(--text3); }
+.tab.modified::before {
+  content: '';
+  position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
+  width: 7px; height: 7px; border-radius: 50%; background: var(--text2);
+}
+
+/* Breadcrumb bar */
+.breadcrumb {
+  height: var(--breadcrumb-h);
+  background: var(--editor-bg);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 14px; gap: 2px;
+  font-size: var(--fs-xs); color: var(--text2);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.breadcrumb .crumb { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.breadcrumb .crumb:hover { color: var(--text); }
+.breadcrumb .crumb svg { width: 12px; height: 12px; }
+.breadcrumb .sep { color: var(--text3); margin: 0 1px; font-size: 10px; }
+.breadcrumb .crumb.active { color: var(--text); }
+
+/* SQL editor */
+.sql-editor {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.gutter {
+  min-width: 52px;
+  padding: 12px 0;
+  background: var(--editor-bg);
+  text-align: right;
+  color: var(--text3);
+  font-size: 12px;
+  border-right: 1px solid var(--border);
+  user-select: none;
+}
+.gutter-line {
+  height: calc(13px * 1.65);
+  padding-right: 14px;
+  display: flex; align-items: center; justify-content: flex-end;
+}
+.gutter-line.current { color: var(--text2); }
+.code-body {
+  flex: 1; padding: 12px 0 12px 18px;
+  overflow: auto; background: var(--editor-bg);
+}
+.cl { height: calc(13px * 1.65); line-height: calc(13px * 1.65); white-space: pre; }
+.cl.cur { background: rgba(0,95,184,0.04); }
+/* Syntax tokens */
+.kw { color: #0000ff; }     /* blue keywords */
+.str{ color: #a31515; }     /* red strings */
+.cm { color: #008000; font-style: italic; }  /* green comments */
+.fn { color: #795e26; }     /* brown function names */
+.tp { color: #267f99; }     /* teal types */
+.nm { color: #098658; }     /* green numbers */
+.tb { color: var(--text); font-weight: 500; }
+.co { color: #0070c1; }     /* column references */
+
+/* Results pane */
+.results {
+  border-top: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0; height: 188px;
+}
+.results-tabs {
+  height: 30px;
+  background: var(--panel-bg);
+  display: flex; align-items: flex-end;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.rtab {
+  height: 29px; padding: 0 12px;
+  display: flex; align-items: center; gap: 5px;
+  font-size: var(--fs-xs); cursor: pointer; color: var(--text2);
+  border-bottom: 1px solid transparent; margin-bottom: -1px;
+}
+.rtab.active { color: var(--text); border-bottom-color: var(--accent); }
+.rtab .count {
+  background: var(--border-mid); color: var(--text2);
+  border-radius: 10px; padding: 0 5px; font-size: 10px;
+}
+.data-table { flex: 1; overflow: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: var(--mono); }
+th {
+  background: var(--panel-bg); border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border); padding: 0 10px; height: 24px;
+  text-align: left; font-family: var(--font); font-weight: 600;
+  color: var(--text2); font-size: 11px; white-space: nowrap;
+  position: sticky; top: 0; z-index: 1; cursor: pointer; user-select: none;
+}
+th.sorted { color: var(--accent); }
+th.rn { width: 36px; text-align: right; color: var(--text3); cursor: default; }
+td {
+  padding: 0 10px; height: 22px;
+  border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);
+  white-space: nowrap; overflow: hidden; max-width: 200px; text-overflow: ellipsis;
+  color: var(--text);
+}
+tr:nth-child(even) td { background: #fafafa; }
+tr:hover td { background: var(--accent-light) !important; }
+tr.sel td { background: var(--accent-light); }
+td.rn { color: var(--text3); text-align: right; font-size: 11px; }
+td.num { text-align: right; color: #098658; }
+td.null { color: var(--text3); font-style: italic; font-family: var(--font); }
+td.date { color: #267f99; }
+
+/* ── Status bar (VS Code blue) ── */
+.statusbar {
+  height: var(--status-h);
+  background: var(--statusbar-bg);
+  display: flex; align-items: center;
+  padding: 0 8px; gap: 0;
+  font-size: var(--fs-xs); color: rgba(255,255,255,0.9);
+  flex-shrink: 0; overflow: hidden;
+}
+.sb-seg {
+  display: flex; align-items: center; gap: 5px;
+  padding: 0 8px; height: 22px; cursor: pointer;
+}
+.sb-seg:hover { background: rgba(255,255,255,0.15); }
+.sb-seg svg { width: 12px; height: 12px; opacity: 0.8; }
+.sb-sep { flex: 1; }
+.sb-icon { opacity: 0.8; }
+
+/* ── Editor toolbar (below tabs) ── */
+.editor-toolbar {
+  height: var(--toolbar-h);
+  background: var(--toolbar-bg);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 6px; gap: 2px;
+  flex-shrink: 0;
+}
+.tb {
+  height: 24px; padding: 0 8px;
+  display: flex; align-items: center; gap: 5px;
+  border-radius: 4px; cursor: pointer; color: var(--text2);
+  border: none; background: none; font-size: var(--fs-xs); font-family: var(--font);
+}
+.tb:hover { background: var(--border); color: var(--text); }
+.tb.run { color: #fff; background: var(--accent); border-radius: 4px; }
+.tb.run:hover { background: #004ea0; }
+.tb svg { width: 13px; height: 13px; }
+.tb-div { width: 1px; height: 16px; background: var(--border); margin: 0 2px; }
+.tb-right { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.conn-chip {
+  height: 22px; padding: 0 8px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--input-bg);
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text2); cursor: pointer;
+}
+.conn-chip:hover { border-color: var(--accent); color: var(--text); }
+.conn-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #b0b0b0; background-clip: padding-box; }
+</style>
+</head>
+<body>
+
+<!-- Title bar -->
+<div class="titlebar" style="position:relative">
+  <div class="titlebar-traffic">
+    <span class="tc-close"></span>
+    <span class="tc-min"></span>
+    <span class="tc-max"></span>
+  </div>
+  <div class="titlebar-menu">
+    <a>File</a><a>Edit</a><a>Navigate</a><a>SQL</a><a>Database</a><a>Window</a><a>Help</a>
+  </div>
+  <span class="titlebar-title">DBeaver — postgres-dev</span>
+</div>
+
+<!-- Workspace -->
+<div class="workspace">
+
+  <!-- Activity bar -->
+  <div class="actbar">
+    <!-- Database navigator (active) -->
+    <div class="act-btn active" title="Database Navigator">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+        <ellipse cx="10" cy="6" rx="7" ry="2.5"/>
+        <path d="M3 6v4c0 1.38 3.13 2.5 7 2.5S17 11.38 17 10V6"/>
+        <path d="M3 10v4c0 1.38 3.13 2.5 7 2.5S17 15.38 17 14v-4"/>
+      </svg>
+    </div>
+    <!-- Search -->
+    <div class="act-btn" title="Search">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="8.5" cy="8.5" r="5"/>
+        <path d="M17 17l-3.5-3.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <!-- Projects -->
+    <div class="act-btn" title="Project Explorer">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M3 6.5A1.5 1.5 0 014.5 5H8l2 2h5.5A1.5 1.5 0 0117 8.5v7A1.5 1.5 0 0115.5 17h-11A1.5 1.5 0 013 15.5v-9z"/>
+      </svg>
+    </div>
+    <!-- ERD -->
+    <div class="act-btn" title="ER Diagrams">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="1.5" y="6" width="5" height="8" rx="1"/>
+        <rect x="13.5" y="6" width="5" height="8" rx="1"/>
+        <path d="M6.5 10h7"/>
+      </svg>
+    </div>
+    <div class="act-spacer"></div>
+    <!-- Settings -->
+    <div class="act-btn" title="Preferences">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="10" cy="10" r="2.5"/>
+        <path d="M10 2.5v1.8M10 15.7v1.8M2.5 10h1.8M15.7 10h1.8M4.4 4.4l1.3 1.3M14.3 14.3l1.3 1.3M4.4 15.6l1.3-1.3M14.3 5.7l1.3-1.3" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Sidebar: Database Navigator -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span>Database Navigator</span>
+      <!-- New connection -->
+      <button class="icon-btn" title="New Connection">
+        <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.4">
+          <path d="M7.5 2v11M2 7.5h11" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <!-- Collapse all -->
+      <button class="icon-btn" title="Collapse All">
+        <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.4">
+          <path d="M2 5h11M2 10h11" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <!-- Filter -->
+      <button class="icon-btn" title="Filter">
+        <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.4">
+          <path d="M1.5 3.5h12L9 9v5l-3-1.5V9L1.5 3.5z" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="tree">
+
+      <!-- postgres-dev (expanded, connected) -->
+      <div class="tree-row" style="padding-left:4px">
+        <div class="conn-strip strip-dev"></div>
+        <div class="chevron open">
+          <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2l4 3-4 3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="node-icon" style="color:#5897d5">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+            <ellipse cx="8" cy="4.5" rx="5.5" ry="2"/>
+            <path d="M2.5 4.5v7c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2v-7"/>
+            <path d="M2.5 8c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2"/>
+          </svg>
+        </div>
+        <span class="label">postgres-dev</span>
+        <div class="badge badge-ok"></div>
+      </div>
+
+        <!-- public schema -->
+        <div class="tree-row" style="padding-left:20px">
+          <div class="chevron open">
+            <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2l4 3-4 3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="node-icon" style="color:var(--text3)">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+              <path d="M3 4.5A1.5 1.5 0 014.5 3H7l2 2h2.5A1.5 1.5 0 0113 6.5v6A1.5 1.5 0 0111.5 14h-7A1.5 1.5 0 013 12.5v-8z"/>
+            </svg>
+          </div>
+          <span class="label">public</span>
+        </div>
+
+          <!-- Tables group -->
+          <div class="tree-row" style="padding-left:36px">
+            <div class="chevron open">
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2l4 3-4 3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="node-icon" style="color:var(--text3)">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+                <rect x="2" y="2" width="12" height="12" rx="1"/>
+                <path d="M2 6h12M6 6v8"/>
+              </svg>
+            </div>
+            <span class="label" style="color:var(--text2)">Tables</span>
+          </div>
+
+            <!-- users table (selected) -->
+            <div class="tree-row selected" style="padding-left:52px">
+              <div class="chevron" style="width:16px"></div>
+              <div class="node-icon" style="color:var(--accent)">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+                  <rect x="2" y="2" width="12" height="12" rx="1"/>
+                  <path d="M2 6h12M6 6v8"/>
+                </svg>
+              </div>
+              <span class="label">users</span>
+            </div>
+            <div class="tree-row" style="padding-left:52px">
+              <div class="chevron" style="width:16px"></div>
+              <div class="node-icon" style="color:var(--text2)">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+                  <rect x="2" y="2" width="12" height="12" rx="1"/>
+                  <path d="M2 6h12M6 6v8"/>
+                </svg>
+              </div>
+              <span class="label">orders</span>
+            </div>
+            <div class="tree-row" style="padding-left:52px">
+              <div class="chevron" style="width:16px"></div>
+              <div class="node-icon" style="color:var(--text2)">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+                  <rect x="2" y="2" width="12" height="12" rx="1"/>
+                  <path d="M2 6h12M6 6v8"/>
+                </svg>
+              </div>
+              <span class="label">products</span>
+            </div>
+            <div class="tree-row" style="padding-left:52px">
+              <div class="chevron" style="width:16px"></div>
+              <div class="node-icon" style="color:var(--text2)">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+                  <rect x="2" y="2" width="12" height="12" rx="1"/>
+                  <path d="M2 6h12M6 6v8"/>
+                </svg>
+              </div>
+              <span class="label">audit_log</span>
+            </div>
+
+          <!-- Views group -->
+          <div class="tree-row" style="padding-left:36px">
+            <div class="chevron">
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2l4 3-4 3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="node-icon" style="color:var(--text3)">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+                <path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z"/>
+                <circle cx="8" cy="8" r="2"/>
+              </svg>
+            </div>
+            <span class="label" style="color:var(--text2)">Views</span>
+          </div>
+
+        <!-- analytics schema (collapsed) -->
+        <div class="tree-row" style="padding-left:20px">
+          <div class="chevron">
+            <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2l4 3-4 3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="node-icon" style="color:var(--text3)">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+              <path d="M3 4.5A1.5 1.5 0 014.5 3H7l2 2h2.5A1.5 1.5 0 0113 6.5v6A1.5 1.5 0 0111.5 14h-7A1.5 1.5 0 013 12.5v-8z"/>
+            </svg>
+          </div>
+          <span class="label">analytics</span>
+        </div>
+
+      <!-- postgres-qa (collapsed, connected) -->
+      <div class="tree-row" style="padding-left:4px; margin-top:2px">
+        <div class="conn-strip strip-qa"></div>
+        <div class="chevron">
+          <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2l4 3-4 3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="node-icon" style="color:#4da86e">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+            <ellipse cx="8" cy="4.5" rx="5.5" ry="2"/>
+            <path d="M2.5 4.5v7c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2v-7"/>
+            <path d="M2.5 8c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2"/>
+          </svg>
+        </div>
+        <span class="label">postgres-qa</span>
+        <div class="badge badge-ok"></div>
+      </div>
+
+      <!-- postgres-prod (collapsed, disconnected) -->
+      <div class="tree-row" style="padding-left:4px; margin-top:2px">
+        <div class="conn-strip strip-prod"></div>
+        <div class="chevron">
+          <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2l4 3-4 3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="node-icon" style="color:#d0544a">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+            <ellipse cx="8" cy="4.5" rx="5.5" ry="2"/>
+            <path d="M2.5 4.5v7c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2v-7"/>
+            <path d="M2.5 8c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2"/>
+          </svg>
+        </div>
+        <span class="label">postgres-prod</span>
+        <div class="badge badge-off"></div>
+      </div>
+
+    </div><!-- /tree -->
+  </div><!-- /sidebar -->
+
+  <!-- Editor area -->
+  <div class="editor-area">
+
+    <!-- Tab strip -->
+    <div class="tabs">
+      <!-- SQL file tab -->
+      <div class="tab active">
+        <span class="tab-icon">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3">
+            <rect x="2" y="1.5" width="10" height="11" rx="1.5"/>
+            <path d="M4.5 5.5h5M4.5 7.5h5M4.5 9.5h3" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span>users.sql</span>
+        <span class="tab-close">
+          <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2l6 6M8 2l-6 6"/></svg>
+        </span>
+      </div>
+      <!-- Table viewer tab -->
+      <div class="tab">
+        <span class="tab-icon" style="color:#5897d5">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2">
+            <rect x="1.5" y="1.5" width="11" height="11" rx="1"/>
+            <path d="M1.5 5.5h11M5.5 5.5v7"/>
+          </svg>
+        </span>
+        <span>users</span>
+        <span class="tab-close">
+          <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2l6 6M8 2l-6 6"/></svg>
+        </span>
+      </div>
+      <!-- Modified SQL tab -->
+      <div class="tab modified">
+        <span style="width:14px"></span><!-- space for modified dot -->
+        <span class="tab-icon">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3">
+            <rect x="2" y="1.5" width="10" height="11" rx="1.5"/>
+            <path d="M4.5 5.5h5M4.5 7.5h5M4.5 9.5h3" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span>analytics.sql</span>
+        <span class="tab-close">
+          <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2l6 6M8 2l-6 6"/></svg>
+        </span>
+      </div>
+    </div>
+
+    <!-- Editor toolbar -->
+    <div class="editor-toolbar">
+      <button class="tb run">
+        <svg viewBox="0 0 13 13" fill="currentColor"><path d="M3 2l8 4.5-8 4.5V2z"/></svg>
+        Run
+      </button>
+      <button class="tb">
+        <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 2l8 4.5-8 4.5V2z" stroke-linejoin="round"/></svg>
+        Selection
+      </button>
+      <div class="tb-div"></div>
+      <button class="tb">
+        <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3">
+          <circle cx="6.5" cy="6.5" r="4.5"/>
+          <path d="M6.5 4v3l2 1.5" stroke-linecap="round"/>
+        </svg>
+        Explain
+      </button>
+      <button class="tb">Format</button>
+      <div class="tb-div"></div>
+      <button class="tb">
+        <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3">
+          <path d="M2 9.5l2-2 2 2 4-5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Commit
+      </button>
+      <button class="tb">
+        <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3">
+          <path d="M3 5.5H2V4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 5.5A5 5 0 106.5 2" stroke-linecap="round" fill="none"/>
+        </svg>
+        Rollback
+      </button>
+      <div class="tb-right">
+        <div class="conn-chip">
+          <div class="conn-dot" style="background:var(--success)"></div>
+          postgres-dev
+          <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" style="width:9px;height:9px;opacity:.5"><path d="M2 3.5l3 3 3-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="conn-chip">
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" style="width:11px;height:11px">
+            <path d="M2 2.5A1.5 1.5 0 013.5 1H6l2 2H9.5A1.5 1.5 0 0111 4.5V9.5A1.5 1.5 0 019.5 11h-6A1.5 1.5 0 012 9.5v-7z"/>
+          </svg>
+          public
+          <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" style="width:9px;height:9px;opacity:.5"><path d="M2 3.5l3 3 3-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Breadcrumbs -->
+    <div class="breadcrumb">
+      <div class="crumb">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
+          <ellipse cx="6" cy="3" rx="4" ry="1.5"/>
+          <path d="M2 3v6c0 .83 1.79 1.5 4 1.5s4-.67 4-1.5V3"/>
+          <path d="M2 6c0 .83 1.79 1.5 4 1.5s4-.67 4-1.5"/>
+        </svg>
+        postgres-dev
+      </div>
+      <span class="sep">›</span>
+      <div class="crumb">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M2 3A1 1 0 013 2H5l1.5 1.5H9A1 1 0 0110 4.5v5.5A1 1 0 019 11H3a1 1 0 01-1-1V3z"/>
+        </svg>
+        public
+      </div>
+      <span class="sep">›</span>
+      <div class="crumb">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
+          <rect x="1.5" y="1.5" width="9" height="9" rx=".8"/>
+          <path d="M1.5 4.5h9M4.5 4.5v6.5"/>
+        </svg>
+        Tables
+      </div>
+      <span class="sep">›</span>
+      <div class="crumb active">users.sql</div>
+    </div>
+
+    <!-- SQL code + results -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+      <div class="sql-editor">
+        <div class="gutter">
+          <div class="gutter-line">1</div>
+          <div class="gutter-line">2</div>
+          <div class="gutter-line">3</div>
+          <div class="gutter-line current">4</div>
+          <div class="gutter-line">5</div>
+          <div class="gutter-line">6</div>
+          <div class="gutter-line">7</div>
+          <div class="gutter-line">8</div>
+          <div class="gutter-line">9</div>
+          <div class="gutter-line">10</div>
+          <div class="gutter-line">11</div>
+          <div class="gutter-line">12</div>
+        </div>
+        <div class="code-body">
+          <div class="cl"><span class="cm">-- Active users with order summary</span></div>
+          <div class="cl"></div>
+          <div class="cl"><span class="kw">SELECT</span></div>
+          <div class="cl cur">    u.<span class="co">id</span>, u.<span class="co">name</span>, u.<span class="co">email</span>,</div>
+          <div class="cl">    <span class="fn">COUNT</span>(o.<span class="co">id</span>)      <span class="kw">AS</span> order_count,</div>
+          <div class="cl">    <span class="fn">SUM</span>(o.<span class="co">total</span>)    <span class="kw">AS</span> total_spent</div>
+          <div class="cl"><span class="kw">FROM</span>  <span class="tb">users</span>  u</div>
+          <div class="cl"><span class="kw">LEFT JOIN</span>  <span class="tb">orders</span>  o  <span class="kw">ON</span>  o.<span class="co">user_id</span> = u.<span class="co">id</span></div>
+          <div class="cl"><span class="kw">WHERE</span>  u.<span class="co">status</span> = <span class="str">'active'</span></div>
+          <div class="cl"><span class="kw">GROUP BY</span>  u.<span class="co">id</span>, u.<span class="co">name</span>, u.<span class="co">email</span></div>
+          <div class="cl"><span class="kw">ORDER BY</span>  total_spent  <span class="kw">DESC</span>;</div>
+          <div class="cl"></div>
+        </div>
+      </div>
+
+      <!-- Results pane -->
+      <div class="results">
+        <div class="results-tabs">
+          <div class="rtab active">
+            Results <span class="count">47</span>
+          </div>
+          <div class="rtab">Output</div>
+          <div class="rtab">Explain Plan</div>
+          <div class="rtab">Query Log</div>
+        </div>
+        <div class="data-table">
+          <table>
+            <thead>
+              <tr>
+                <th class="rn">#</th>
+                <th class="sorted">id</th>
+                <th>name</th>
+                <th>email</th>
+                <th>order_count</th>
+                <th>total_spent</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rn">1</td><td class="num">1042</td><td>Alice Müller</td>
+                <td>alice@example.com</td><td class="num">23</td><td class="num">4 820.50</td>
+              </tr>
+              <tr class="sel">
+                <td class="rn">2</td><td class="num">887</td><td>Bob Chen</td>
+                <td>bchen@corp.io</td><td class="num">18</td><td class="num">3 210.00</td>
+              </tr>
+              <tr>
+                <td class="rn">3</td><td class="num">2201</td><td>Carol Davis</td>
+                <td>carol@davis.net</td><td class="num">12</td><td class="num">1 988.75</td>
+              </tr>
+              <tr>
+                <td class="rn">4</td><td class="num">99</td>
+                <td class="null">NULL</td>
+                <td>anon@test.dev</td><td class="num">5</td><td class="num">320.00</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /editor-area -->
+</div><!-- /workspace -->
+
+<!-- Status bar -->
+<div class="statusbar">
+  <div class="sb-seg">
+    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3">
+      <circle cx="5" cy="5" r="3.5"/>
+      <path d="M3 12V9.5a2 2 0 014 0V12" stroke-linecap="round"/>
+    </svg>
+    postgres-dev
+  </div>
+  <div class="sb-seg">
+    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3">
+      <path d="M2 2.5A1 1 0 013 1.5H5l1.5 1.5H9.5A1 1 0 0110.5 4v6a1 1 0 01-1 1h-7a1 1 0 01-1-1V2.5z"/>
+    </svg>
+    public
+  </div>
+  <div class="sb-seg">Auto-commit: ON</div>
+  <div class="sb-sep"></div>
+  <div class="sb-seg">
+    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3">
+      <circle cx="6" cy="6" r="4.5"/>
+      <path d="M6 3.5v3l2 1.5" stroke-linecap="round"/>
+    </svg>
+    12 ms
+  </div>
+  <div class="sb-seg">47 rows</div>
+  <div class="sb-seg" style="margin-left:8px">Ln 4, Col 8</div>
+  <div class="sb-seg">UTF-8</div>
+  <div class="sb-seg">SQL</div>
+</div>
+
+</body>
+</html>
